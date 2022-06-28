@@ -2,23 +2,9 @@ package ranker
 
 import (
 	"os"
-	"fmt"
-	"time"
 	"testing"
 	"strings"
-	"runtime"
-	"math/rand"
 )
-
-func TestMain(m *testing.M) {
-    maxProcs := 4
-    numCPU := runtime.NumCPU()
-    if numCPU < maxProcs {
-    	maxProcs = numCPU
-    }
-    runtime.GOMAXPROCS(maxProcs)
-	os.Exit(m.Run())
-}
 
 func TestProcessFile(t *testing.T) {
 	path := "/tmp/clickhouse-file-reader-test-ranker"
@@ -93,90 +79,4 @@ func TestRankerEmptyInput(t *testing.T) {
 	if len(res) != 0 {
 		t.Fatal("Output should be empty slice")
 	}
-}
-
-func generateLines(n int) []string {
-	lines := make([]string, n)
-	for i := range lines {
-		randomID := rand.Intn(n)
-		randomValue := rand.Intn(n)
-		lines[i] = fmt.Sprintf("http://api.tech.com/item/%v %v", randomID, randomValue)
-	}
-	return lines
-}
-
-func TestPerfRanker(t *testing.T) {
-	n := 1000000
-	topK := 10
-	lines := generateLines(n)
-
-	t.Run("SingleWorker", func(t *testing.T) {
-	    r := NewRanker(1, topK)
-        start := time.Now()
-	    for _, str := range lines {
-	    	r.ProcessLine(str)
-	    }
-	    res := r.GetRankedList()
-        duration := time.Since(start)
-	    t.Log("Elapsed time:", duration)
-	    if len(res) != 10 {
-	    	t.Fatalf("Output length should be equal to %v", topK)
-	    }
-	})
-
-	t.Run("MultipleWorkers", func(t *testing.T) {
-	    r := NewRanker(10, topK)
-        start := time.Now()
-	    for _, str := range lines {
-	    	r.ProcessLine(str)
-	    }
-	    res := r.GetRankedList()
-        duration := time.Since(start)
-	    t.Log("Elapsed time:", duration)
-	    if len(res) != 10 {
-	    	t.Fatal("Output length should be equal to 10")
-	    }
-	})
-}
-
-func TestPerfFileParser(t *testing.T) {
-	n := 1000000
-	topK := 10
-	lines := generateLines(n)
-	bufSize := 128*1024
-
-	path := "/tmp/clickhouse-file-reader-test-ranker-large"
-	defer os.RemoveAll(path)
-
-	builder := strings.Builder{}
-	for _, l := range lines {
-		_, err := builder.WriteString(l+"\n")
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-	err := os.WriteFile(path, []byte(builder.String()), 0644)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Run("SingleWorker", func(t *testing.T) {
-        start := time.Now()
-	    _, err := ProcessFile(path, bufSize, 1, topK)
-        duration := time.Since(start)
-	    t.Log("Elapsed time:", duration)
-	    if err != nil {
-	    	t.Fatal(err)
-	    }
-	})
-
-	t.Run("MultipleWorkers", func(t *testing.T) {
-        start := time.Now()
-	    _, err := ProcessFile(path, bufSize, 10, topK)
-        duration := time.Since(start)
-	    t.Log("Elapsed time:", duration)
-	    if err != nil {
-	    	t.Fatal(err)
-	    }
-	})
 }

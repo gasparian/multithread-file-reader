@@ -59,7 +59,7 @@ func (r *Ranker) mapper(wg *sync.WaitGroup) {
 // NewRanker creates new instance of the ranker
 func NewRanker(nWorkers, topK int) *Ranker {
 	r := &Ranker{
-	    inputChan: make(chan string),
+	    inputChan: make(chan string, 1000),
 	    heapsChan: make(chan *heap.InvertedBoundedHeap[*record.Record], nWorkers),
 		config: rankerConfig{
 			topK: topK, 

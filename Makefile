@@ -16,13 +16,17 @@ install-hooks:
 .PHONY: build
 build:
 	go build \
-		-v -o ./cmd/filereader \
-		./cmd
+		-v -o ./cmd/filereader/filereader \
+		./cmd/filereader
 
 .PHONY: run
 run:
-	./cmd/filereader
+	./cmd/filereader/filereader
 
 .PHONY: test
 test:
-	time go test -v -cover -race -count=1 -timeout 30s $$(go list ./... | grep -v /cmd)
+	go test -v -cover -race -count=1 -timeout 30s $$(go list ./... | grep -v '/cmd')
+
+.PHONY: perftest
+perftest:
+	time go run ./cmd/perf/main.go

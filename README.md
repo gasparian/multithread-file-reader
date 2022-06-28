@@ -26,30 +26,29 @@ My current solution is pretty straightforward:
  - Several spawned "workers" already listens to that channel, parses incoming data and puts the records into the heap of fixed size (== top k that we need to return in the end);  
  - Each of workers, after the input channel closes, send heap to the next channel;  
  - Heaps from that channel being merged with each other, and the list of urls with the top k values returned as a result;  
+
+I've used go `1.18` and **no** third-party libraries.  
  
 `Ranker` has methods which implements the desctibed logic.  
 Here is ranker test report example, where I've tried to get basic understanding of how much is time difference using single heap workers vs multiple workers:  
 ```
-=== RUN   TestPerfRanker
-=== RUN   TestPerfRanker/SingleWorker
-    ranker_test.go:121: Elapsed time: 4.517908742s
-=== RUN   TestPerfRanker/MultipleWorkers
-    ranker_test.go:135: Elapsed time: 1.956931152s
---- PASS: TestPerfRanker (9.50s)
-    --- PASS: TestPerfRanker/SingleWorker (4.52s)
-    --- PASS: TestPerfRanker/MultipleWorkers (1.96s)
-=== RUN   TestPerfFileParser
-=== RUN   TestPerfFileParser/SingleWorker
-    ranker_test.go:167: Elapsed time: 5.137702624s
-=== RUN   TestPerfFileParser/MultipleWorkers
-    ranker_test.go:177: Elapsed time: 2.285025208s
---- PASS: TestPerfFileParser (11.14s)
-    --- PASS: TestPerfFileParser/SingleWorker (5.14s)
-    --- PASS: TestPerfFileParser/MultipleWorkers (2.29s)
-PASS
-ok  	github.com/gasparian/clickhouse-test-file-reader/internal/ranker	20.880s
+2022/06/28 20:24:09 >>> Single worker test
+2022/06/28 20:24:11 Elapsed time: 1.582668267s
+2022/06/28 20:24:11 ---------------------
+2022/06/28 20:24:11 >>> Multiple workers test
+2022/06/28 20:24:12 Elapsed time: 1.057413542s
+2022/06/28 20:24:12 ---------------------
+
+2022/06/28 20:24:12 >>> Single worker test
+2022/06/28 20:24:14 Elapsed time: 1.709065508s
+2022/06/28 20:24:14 ---------------------
+2022/06/28 20:24:14 >>> Multiple workers test
+2022/06/28 20:24:15 Elapsed time: 1.269869606s
+2022/06/28 20:24:15 ---------------------
+        7.86 real        16.01 user         2.21 sys
 ```  
-As you can see, we can have *~>50% performance gain* with 10 workers on 4 CPUs, compared to a single worker. It repeats both for ranker alone and the full "FileParser", when we first write a file with randomly generated data and then read it.  
+You can reproduce it on your machine by running: `make perftest`.  
+As you can see, we can have *~>25-30% performance gain* with 3 workers on 4 CPUs, compared to a single worker. It repeats both for ranker alone and the full "FileParser", when we first write a file with randomly generated data and then read it. The gain is not so high, and increasing of amount of workers doesn't help much, so need more time to inverstage that.  
 Of course, in order to make test results more usable, we need to monitor RAM and CPU consumtion, and repeat the test several times to operate with statistics.  
 
 #### Things to improve in the current implementation  
@@ -78,10 +77,7 @@ Compiled binary will be placed in `./cmd/filereader`.
 You can use `make run` to just run an app with default parameters (check them in `./cmd/main.go`).  
 Or you can provide parameters as command line arguments, e.g.:  
 ```
-./cmd/filereader \
-    --workers 4 \
-    --topk 3 \
-    --buf 1024
+./cmd/filereader/filereader --workers 4 --topk 3 --buf 1024
 ```  
 After running, you will be asked to enter a path to file that you want to process.  
 

@@ -3,6 +3,7 @@
 !*.*
 !Makefile
 !.githooks/*
+!/cmd/filereader
 
 # Binaries for programs and plugins
 *.exe
