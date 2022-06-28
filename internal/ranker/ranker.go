@@ -97,6 +97,9 @@ func (r *Ranker) GetRankedList() []string {
 	if finalHeap.Len() == 0 {
 		return []string{}
 	}
+	if finalHeap.Len() < topK {
+		topK = finalHeap.Len()
+	}
 	result := make([]string, topK)
 	// invert an order of elements, since we're mainting min heap
 	// but we need highest values first in result

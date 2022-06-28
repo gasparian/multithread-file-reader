@@ -8,8 +8,8 @@ import (
 )
 
 func main() {
-	nWorkers := flag.Int("workers", 4, "number of workers to process lines")
-	topK := flag.Int("topk", 2, "number of top k elements to return")
+	nWorkers := flag.Int("workers", 10, "number of workers to process lines")
+	topK := flag.Int("topk", 10, "number of top k elements to return")
 	bufSize := flag.Int("buf", 128*1024, "size of buffer to reaed lines from file")
 	flag.Parse()
 
