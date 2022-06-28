@@ -20,10 +20,45 @@ http://api.tech.com/item/122345
 http://api.tech.com/item/124345
 ```  
 
-#### Solution
-*TODO*
+#### Solution and results  
+My current solution is pretty straightforward:  
+ - First, we read file in chunks, line by line, and send each line to the channel;  
+ - Several spawned "workers" already listens to that channel, parses incoming data and puts the records into the heap of fixed size (== top k that we need to return in the end);  
+ - Each of workers, after the input channel closes, send heap to the next channel;  
+ - Heaps from that channel being merged with each other, and the list of urls with the top k values returned as a result;  
+ 
+`Ranker` has methods which implements the desctibed logic.  
+Here is ranker test report example, where I've tried to get basic understanding of how much is time difference using single heap workers vs multiple workers:  
+```
+=== RUN   TestPerfRanker
+=== RUN   TestPerfRanker/SingleWorker
+    ranker_test.go:121: Elapsed time: 4.517908742s
+=== RUN   TestPerfRanker/MultipleWorkers
+    ranker_test.go:135: Elapsed time: 1.956931152s
+--- PASS: TestPerfRanker (9.50s)
+    --- PASS: TestPerfRanker/SingleWorker (4.52s)
+    --- PASS: TestPerfRanker/MultipleWorkers (1.96s)
+=== RUN   TestPerfFileParser
+=== RUN   TestPerfFileParser/SingleWorker
+    ranker_test.go:167: Elapsed time: 5.137702624s
+=== RUN   TestPerfFileParser/MultipleWorkers
+    ranker_test.go:177: Elapsed time: 2.285025208s
+--- PASS: TestPerfFileParser (11.14s)
+    --- PASS: TestPerfFileParser/SingleWorker (5.14s)
+    --- PASS: TestPerfFileParser/MultipleWorkers (2.29s)
+PASS
+ok  	github.com/gasparian/clickhouse-test-file-reader/internal/ranker	20.880s
+```  
+As you can see, we can have *~>50% performance gain* with 10 workers on 4 CPUs, compared to a single worker. It repeats both for ranker alone and the full "FileParser", when we first write a file with randomly generated data and then read it.  
+Of course, in order to make test results more usable, we need to monitor RAM and CPU consumtion, and repeat the test several times to operate with statistics.  
 
-### Build  
+#### Things to improve in the current implementation  
+ - Read file from the several threads in parallel, instead of reading it from a single thread and send line by line to workers;  
+ - Increase unittests coverage;  
+ - Refactor Heap code to make it easier to understand what's going on there;  
+ - Add "propper" performance tests experimenting with different files sizes and monitor amount of *allocated memory*/cpu time spent (standard go tools can do this);  
+
+### Build and test  
 
 Specify your os and arch to Build static binary. Here is an example for mac m1:  
 ```
@@ -31,6 +66,12 @@ make build GOOS=darwin GOARCH=arm64
 ```  
 Executable binary will be located at `./cmd`.  
 By default `darwin/amd64` is using.  
+
+In order to test, just run:  
+```
+make test
+```  
+It can take ~1-2 minutes to finish.  
 
 ###  Usage  
 Compiled binary will be placed in `./cmd/filereader`.  

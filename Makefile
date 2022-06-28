@@ -25,4 +25,4 @@ run:
 
 .PHONY: test
 test:
-	go test -v -cover -race -count=1 -timeout 30s $$(go list ./... | grep -v /cmd)
+	time go test -v -cover -race -count=1 -timeout 30s $$(go list ./... | grep -v /cmd)

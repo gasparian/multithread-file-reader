@@ -2,15 +2,18 @@ package heap
 
 // Ref.: https://gist.github.com/nwillc/554847806891a41e7bd32041308dfb40#file-go_generics_heap-go
 
-// Heap holds generic heap implementation
-type Heap[T any] struct {
+// InvertedBoundedHeap holds generic heap implementation
+// Main idea: use min heap as max heap, since it's very convinient to 
+// drop smallest values when the maxSize exceeded
+type InvertedBoundedHeap[T any] struct {
 	data []T
 	comp func(a, b T) bool
+	maxSize int
 }
 
-// NewHeap creates new instance of Heap, by comparator and optionally provided array
-func NewHeap[T any](comp func(a, b T) bool, data []T) *Heap[T] {
-	h := &Heap[T]{comp: comp}
+// NewHeap creates new instance of InvertedBoundedHeap, by comparator and optionally provided array
+func NewHeap[T any](comp func(a, b T) bool, maxSize int, data []T) *InvertedBoundedHeap[T] {
+	h := &InvertedBoundedHeap[T]{comp: comp, maxSize: maxSize}
 	if data != nil {
 		h.data = data
 	    h.build()
@@ -18,17 +21,23 @@ func NewHeap[T any](comp func(a, b T) bool, data []T) *Heap[T] {
 	return h
 }
 
-// Len returns size of Heap
-func (h *Heap[T]) Len() int { return len(h.data) }
+// Len returns size of InvertedBoundedHeap
+func (h *InvertedBoundedHeap[T]) Len() int { return len(h.data) }
 
-// Push adds new element to Heap
-func (h *Heap[T]) Push(v T) {
+// Push adds new element to InvertedBoundedHeap 
+// it will return value from the top of the heap if size limit exceeded (be careful!)
+func (h *InvertedBoundedHeap[T]) Push(v T) T {
 	h.data = append(h.data, v)
 	h.up(h.Len() - 1)
+	var v_ T
+	if h.Len() > h.maxSize {
+		v_ = h.Pop()
+	}
+	return v_
 }
 
-// Pop removes and returns top element from Heap
-func (h *Heap[T]) Pop() T {
+// Pop removes and returns top element from InvertedBoundedHeap
+func (h *InvertedBoundedHeap[T]) Pop() T {
 	n := h.Len() - 1
 	if n > 0 {
 		h.swap(0, n)
@@ -40,16 +49,16 @@ func (h *Heap[T]) Pop() T {
 }
 
 // Merge merges current heap with the provided one
-func (h *Heap[T]) Merge(inputHeap *Heap[T]) {
+func (h *InvertedBoundedHeap[T]) Merge(inputHeap *InvertedBoundedHeap[T]) []T {
 	h.data = append(h.data, inputHeap.data...)
-	h.build()
+	return h.build()
 }
 
-func (h *Heap[T]) swap(i, j int) {
+func (h *InvertedBoundedHeap[T]) swap(i, j int) {
 	h.data[i], h.data[j] = h.data[j], h.data[i]
 }
 
-func (h *Heap[T]) up(jj int) {
+func (h *InvertedBoundedHeap[T]) up(jj int) {
 	for {
 		i := parent(jj)
 		if i == jj || !h.comp(h.data[jj], h.data[i]) {
@@ -60,7 +69,7 @@ func (h *Heap[T]) up(jj int) {
 	}
 }
 
-func (h *Heap[T]) down() {
+func (h *InvertedBoundedHeap[T]) down() {
 	n := h.Len() - 1
 	i1 := 0
 	for {
@@ -81,7 +90,7 @@ func (h *Heap[T]) down() {
 	}
 }
 
-func (h *Heap[T]) heapify(i int) {
+func (h *InvertedBoundedHeap[T]) heapify(i int) {
 	largest := i
 	left := left(i)
 	right := right(i)
@@ -98,11 +107,16 @@ func (h *Heap[T]) heapify(i int) {
 	}
 }
 
-func (h *Heap[T]) build() {
+func (h *InvertedBoundedHeap[T]) build() []T {
+	remaining := make([]T, 0)
 	startIdx := h.Len()/2 - 1
 	for i:=startIdx; i >= 0; i-- {
 		h.heapify(i)
 	}
+	for h.Len() > h.maxSize {
+		remaining = append(remaining, h.Pop())
+	}
+	return remaining
 }
 
 func parent(i int) int { return (i - 1) / 2 }

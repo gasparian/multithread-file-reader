@@ -15,6 +15,7 @@ func checkValidPath(path string) error {
 	return err
 }
 
+// ParseInputPath parses filepath from the stdin
 func ParseInputPath() (string, error) {
 	reader := bufio.NewReader(os.Stdin)
     fmt.Print("Enter path to file: ")
@@ -30,6 +31,7 @@ func ParseInputPath() (string, error) {
 	return path, nil
 }
 
+// PrintResult prints slice of strings to stdout
 func PrintResult(res []string) {
 	for _, r := range res {
 		fmt.Println(r)
