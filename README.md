@@ -27,7 +27,7 @@ My current solution is pretty straightforward:
  - Each of workers, after the input channel closes, send heap to the next channel;  
  - Heaps from that channel being merged with each other, and the list of urls with the top k values returned as a result;  
 
-I've used go `1.18` and **no** third-party libraries.  
+I've used `go 1.18` and **no** third-party libraries.  
  
 `Ranker` has methods which implements the desctibed logic.  
 Here is ranker test report example, where I've tried to get basic understanding of how much is time difference using single heap workers vs multiple workers:  
@@ -47,8 +47,8 @@ Here is ranker test report example, where I've tried to get basic understanding 
 2022/06/28 20:24:15 ---------------------
         7.86 real        16.01 user         2.21 sys
 ```  
-You can reproduce it on your machine by running: `make perftest`.  
-As you can see, we can have *~>25-30% performance gain* with 3 workers on 4 CPUs, compared to a single worker. It repeats both for ranker alone and the full "FileParser", when we first write a file with randomly generated data and then read it. The gain is not so high, and increasing of amount of workers doesn't help much, so need more time to inverstage that.  
+You can reproduce it on your machine by running: `make perftest`. Inside this test, 5 mln lines with random ids and values are generated and passed to `Ranker` and `FileParser`.  
+As you can see, we can have *~>25-30% performance gain* with 3 workers on 4 CPUs, compared to a single worker. It repeats both for ranker alone and the full `FileParser`, when we first write a file with randomly generated data and then read it. The gain is not so high, and increasing of amount of workers doesn't help much, so need more time to inverstage that.  
 Of course, in order to make test results more usable, we need to monitor RAM and CPU consumtion, and repeat the test several times to operate with statistics.  
 
 #### Things to improve in the current implementation  
