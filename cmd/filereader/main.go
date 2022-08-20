@@ -3,14 +3,16 @@ package main
 import (
 	"flag"
 	"log"
-	"github.com/gasparian/clickhouse-test-file-reader/internal/ranker"
+
 	"github.com/gasparian/clickhouse-test-file-reader/internal/io"
+	"github.com/gasparian/clickhouse-test-file-reader/internal/ranker"
 )
 
 func main() {
-	nWorkers := flag.Int("workers", 10, "number of workers to process lines")
+	nWorkers := flag.Int("workers", 4, "number of workers to process lines")
 	topK := flag.Int("topk", 10, "number of top k elements to return")
-	bufSize := flag.Int("buf", 128*1024, "size of buffer to reaed lines from file")
+	bufSize := flag.Int("buf", 1024*1024, "size of buffer to read lines from file")
+	segmentSize := flag.Int64("segment", 1024*1024, "size of the file segment in bytes to be processed by a single worker")
 	flag.Parse()
 
 	path, _ := io.ParseInputPath()
@@ -19,6 +21,7 @@ func main() {
 		*bufSize,
 		*nWorkers,
 		*topK,
+		*segmentSize,
 	)
 	if err != nil {
 		log.Fatal(err)

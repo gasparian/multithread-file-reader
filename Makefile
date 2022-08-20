@@ -16,6 +16,7 @@ install-hooks:
 .PHONY: build
 build:
 	go build \
+	    -ldflags '-w -extldflags "-static"' \
 		-v -o ./cmd/filereader/filereader \
 		./cmd/filereader
 
@@ -29,4 +30,4 @@ test:
 
 .PHONY: perftest
 perftest:
-	time go run ./cmd/perf/main.go
+	go run ./cmd/perf/main.go

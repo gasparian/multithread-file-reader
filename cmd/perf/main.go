@@ -1,107 +1,93 @@
 package main
 
 import (
-	"os"
-	"time"
 	"fmt"
 	"log"
-	"strings"
-	"runtime"
+	"math"
 	"math/rand"
+	"os"
+	"runtime"
+	"time"
 
 	"github.com/gasparian/clickhouse-test-file-reader/internal/ranker"
 )
 
-const (
-	TOPK = 10
-	NWORKERS = 3
-	BUFSIZE = 128*1024
-	FPATH = "/tmp/clickhouse-file-reader-test-ranker-large"
-)
-
 var (
-    MAXPROCS = 4
-	LINES = generateLines(5000000)
+	MAXPROCS = 4
 )
 
-func generateLines(n int) []string {
-	lines := make([]string, n)
-	for i := range lines {
-		randomID := rand.Intn(n)
-		randomValue := rand.Intn(n)
-		lines[i] = fmt.Sprintf("http://api.tech.com/item/%v %v", randomID, randomValue)
+func generateRandomLine() string {
+	line := fmt.Sprintf(
+		"http://api.tech.com/item/%v %v",
+		rand.Intn(math.MaxInt),
+		rand.Intn(math.MaxInt),
+	)
+	return line
+}
+
+func createTempFile(nLines int) (string, error) {
+	f, err := os.CreateTemp("/tmp", "filereader-perf-*")
+	if err != nil {
+		return "", err
 	}
-	return lines
-}
-
-func testRanker(nWorkers int) {
-	r := ranker.NewRanker(nWorkers, TOPK)
-       start := time.Now()
-	for _, str := range LINES {
-		r.ProcessLine(str)
+	defer f.Close()
+	for i := 0; i < nLines; i++ {
+		fmt.Fprintln(f, generateRandomLine())
 	}
-	r.GetRankedList()
-    duration := time.Since(start)
-	log.Println("Elapsed time:", duration)
-	log.Println("---------------------")
-}
-
-func TestRankerSingleWorkers() {
-	log.Println(">>> Single worker test")
-	testRanker(1)
-}
-
-func TestRankerMultipleWorkers() {
-	log.Println(">>> Multiple workers test")
-	testRanker(NWORKERS)
-}
-
-func TestFileParserWorker() {
-	defer os.RemoveAll(FPATH)
-	builder := strings.Builder{}
-	for _, l := range LINES {
-		_, err := builder.WriteString(l+"\n")
-		if err != nil {
-			log.Fatal(err)
-		}
+	fi, err := f.Stat()
+	if err != nil {
+		return "", err
 	}
-	err := os.WriteFile(FPATH, []byte(builder.String()), 0644)
+	log.Printf("Generated file size in bytes: %v\n", fi.Size())
+	return f.Name(), nil
+}
+
+func processFile(fname string, topK, buffSize, nworkers int, segmentSize int64) int64 {
+	start := time.Now()
+	_, err := ranker.ProcessFile(fname, buffSize, nworkers, topK, segmentSize)
+	duration := time.Since(start)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	log.Println(">>> Single worker test")
-    start := time.Now()
-	_, err = ranker.ProcessFile(FPATH, BUFSIZE, 1, TOPK)
-    duration := time.Since(start)
-	log.Println("Elapsed time:", duration)
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Println("---------------------")
-
-	log.Println(">>> Multiple workers test")
-    start = time.Now()
-	_, err = ranker.ProcessFile(FPATH, BUFSIZE, NWORKERS, TOPK)
-    duration = time.Since(start)
-	log.Println("Elapsed time:", duration)
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Println("---------------------")
+	return int64(duration)
 }
 
 func init() {
-    numCPU := runtime.NumCPU()
-    if numCPU < MAXPROCS {
-    	MAXPROCS = numCPU
-    }
+	numCPU := runtime.NumCPU()
+	if numCPU < MAXPROCS {
+		MAXPROCS = numCPU
+	}
 	runtime.GOMAXPROCS(MAXPROCS)
+	log.Printf("MAXPROCS set to %v", MAXPROCS)
 }
 
 func main() {
-    TestRankerSingleWorkers()
-    TestRankerMultipleWorkers()
-	fmt.Println()
-    TestFileParserWorker()
+	nLines := 2500000
+	topK := 10
+	bufSize := 512 * 1024
+	nRuns := 10
+	var defaultSegmentSize int64 = 1024 * 1024
+	var avrgDuration float64 = 0
+	fname, err := createTempFile(nLines)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer os.RemoveAll(fname)
+	for i := 0; i <= 5; i++ {
+		segmentSize := int64(math.Pow(2, float64(i))) * defaultSegmentSize
+		log.Printf("--- Segment size: %v\n", segmentSize)
+		for j := 0; j <= 3; j++ {
+			nWorkers := math.Pow(2, float64(j))
+			avrgDuration = 0
+			log.Printf(">>> %v workers \n", nWorkers)
+			for k := 0; k < nRuns; k++ {
+				duration := processFile(fname, topK, bufSize, int(nWorkers), segmentSize)
+				avrgDuration += float64(duration) / 1e6
+			}
+			avrgDuration /= float64(nRuns)
+			log.Printf("Average elapsed time: %v ms\n", int(avrgDuration))
+			log.Println("---------------------")
+		}
+		log.Println()
+	}
 }
