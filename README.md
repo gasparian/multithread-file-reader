@@ -1,9 +1,9 @@
-# clickhouse-file-reader
-Clickhouse cloud SWE home test assignment solution
+# multithread-file-reader  
+Small fun project to show how to read and process file from multiple threads in golang.  
 
 ### Description  
 #### Task
-The task is to extract urls data from the file and return the ranked list of urls with the highest values.  
+Imagine a task where you need to extract urls stats data from the file and return the ranked list of urls with the highest values.  
 Files are provided in the following format:  
 ```
 <url><double_white_space><long value>
@@ -21,14 +21,14 @@ http://api.tech.com/item/124345
 ```  
 
 #### Solution and results  
-My current solution is pretty straightforward:  
- - First, we read file and split it in segments, based on segment size and delimiter, then each segment pointers are passed to the special channel;  
+High-level algorithm description:  
+ - First, we read file and split it into segments, based on segment size and delimiter, then each segment pointers are passed to the special channel in `Ranker`;  
  - Several spawned "ranker workers" (each one is a separate goroutine) already listens to that channel, parses incoming data, opens file, reads certain segment from it, and puts the records into the heap of fixed size (size is the top k that we need to return in the end);  
  - Each of workers, after the input channel closes, send heap to the next channel;  
  - Heaps from the final channel being merged with each other, and the list of urls with the top k values returned as a result;  
 `Ranker` holds the described logic.  
 
-I've used `go 1.18` and **no** third-party libraries.  
+I've used `go 1.18` and **no third-party libraries**.  
  
 Here is ranker test report example, where I've tried to get basic understanding of how much is the time difference using single workers vs multiple workers:  
 ```
@@ -44,23 +44,15 @@ Here is ranker test report example, where I've tried to get basic understanding 
 2022/08/21 16:55:23 >>> 4 workers 
 2022/08/21 16:55:25 Average elapsed time: 281 ms
 2022/08/21 16:55:25 ---------------------
-2022/08/21 16:55:25 >>> 8 workers 
-2022/08/21 16:55:28 Average elapsed time: 277 ms
-2022/08/21 16:55:28 ---------------------
 ...
 ```  
 You can reproduce it on your machine by running: `make perftest`. Inside this test, 2.5 mln lines with random ids and values are generated and passed to `Ranker`.  
 As you can see, we can have *~x3 performance gain* with 4 workers when Go scheduler uses 4 CPUs, compared to a single worker. The gain is not so high, and increasing the amount of workers alongside with available CPUs will increase a performance up to certain point.  
-You can find more details in `./cmd/perf/main.go`, and see how segment size affects the performance (according to my experiments - 1Mb segment size gives the best result, comparing to larger segment sizes).  
-
-#### Things to improve in the current implementation  
- - Increase unittests coverage;  
- - Refactor Heap code to make it easier to understand what's going on there;  
- - Add a "propper" performance tests experimenting with different files sizes and monitor amount of *allocated memory*/cpu time spent (standard go tools can do this) to identify bottlenecks;  
+You can find more details in `./cmd/perf/main.go`, and see how segment size affects the performance (according to my experiments - 1Mb segment size gives the best result, comparing to larger segment sizes). But **keep in mind**, that `segmentSize` should be chosen based on the file size that you are working with, it will decrease number of segments to be processed, which could speed up the process and will take less memory, since segments pointers kept in the slice in RAM.  
 
 ### Build and test  
 
-Specify your os and arch to Build static binary (except for mac os):  
+Specify your os and arch to Build static binary (except for mac):  
 
 ```
 make build GOOS=linux GOARCH=amd64
