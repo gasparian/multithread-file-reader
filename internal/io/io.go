@@ -45,6 +45,7 @@ type FileSegmentPointer struct {
 }
 
 // GetFileSegments reads file and returns segments pointers of ~`segmentSize` based on provided delimiter
+// TODO: submit segments pointers in channel and return it, to not keep segments in memory
 func GetFileSegments(f *os.File, bufSize int, segmentSize int64, delimiter byte) ([]FileSegmentPointer, error) {
 	var (
 		pointer     int64 = 0
