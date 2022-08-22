@@ -12,8 +12,8 @@ const (
 )
 
 func TestProcessFile(t *testing.T) {
-	path := "/tmp/clickhouse-file-reader-test-ranker"
-	defer os.RemoveAll(path)
+	fpath := "/tmp/clickhouse-file-reader-test-ranker"
+	defer os.RemoveAll(fpath)
 	data := []byte(`
 http://api.tech.com/item/121345  9
 http://api.tech.com/item/122345  350
@@ -22,7 +22,7 @@ http://api.tech.com/item/124345  231
 http://api.tech.com/item/125345  111
 
 `)
-	err := os.WriteFile(path, data, 0644)
+	err := os.WriteFile(fpath, data, 0644)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +33,7 @@ http://api.tech.com/item/125345  111
 	}
 
 	t.Run("SingleWorker", func(t *testing.T) {
-		res, err := ProcessFile(path, bufSize, 1, topK, 64)
+		res, err := ProcessFile(fpath, bufSize, 1, topK, 64)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -45,7 +45,7 @@ http://api.tech.com/item/125345  111
 	})
 
 	t.Run("MultipleWorkers", func(t *testing.T) {
-		res, err := ProcessFile(path, bufSize, 4, topK, 64)
+		res, err := ProcessFile(fpath, bufSize, 4, topK, 64)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -58,18 +58,18 @@ http://api.tech.com/item/125345  111
 }
 
 func TestRankerShortSeq(t *testing.T) {
-	path := "/tmp/clickhouse-file-reader-test-ranker-short"
-	defer os.RemoveAll(path)
+	fpath := "/tmp/clickhouse-file-reader-test-ranker-short"
+	defer os.RemoveAll(fpath)
 	data := []byte(`
 http://api.tech.com/item/121345  9
 http://api.tech.com/item/122345  350
 
 `)
-	err := os.WriteFile(path, data, 0644)
+	err := os.WriteFile(fpath, data, 0644)
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := ProcessFile(path, bufSize, 1, 1, 0)
+	res, err := ProcessFile(fpath, bufSize, 1, 1, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,16 +79,16 @@ http://api.tech.com/item/122345  350
 }
 
 func TestRankerEmptyInput(t *testing.T) {
-	path := "/tmp/clickhouse-file-reader-test-ranker-empty"
-	defer os.RemoveAll(path)
+	fpath := "/tmp/clickhouse-file-reader-test-ranker-empty"
+	defer os.RemoveAll(fpath)
 	data := []byte(`
 
 `)
-	err := os.WriteFile(path, data, 0644)
+	err := os.WriteFile(fpath, data, 0644)
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := ProcessFile(path, bufSize, 1, topK, 0)
+	res, err := ProcessFile(fpath, bufSize, 1, topK, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

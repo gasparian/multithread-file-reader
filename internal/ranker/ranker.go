@@ -40,8 +40,8 @@ type Ranker struct {
 	config    rankerConfig
 }
 
-func (r *Ranker) processSegment(fpath string, fileSegment *io.FileSegmentPointer, bufSize int) (*heap.InvertedBoundedHeap[*record.Record], error) {
-	f, err := os.Open(fpath)
+func (r *Ranker) processSegment(fileSegment *io.FileSegmentPointer, bufSize int) (*heap.InvertedBoundedHeap[*record.Record], error) {
+	f, err := os.Open(fileSegment.Fpath)
 	if err != nil {
 		return nil, err
 	}
@@ -72,9 +72,9 @@ func (r *Ranker) processSegment(fpath string, fileSegment *io.FileSegmentPointer
 	return h, nil
 }
 
-func (r *Ranker) worker(fpath string, bufSize int, wg *sync.WaitGroup) {
+func (r *Ranker) worker(bufSize int, wg *sync.WaitGroup) {
 	for fileSegmentPointer := range r.inputChan {
-		h, err := r.processSegment(fpath, fileSegmentPointer, bufSize)
+		h, err := r.processSegment(fileSegmentPointer, bufSize)
 		if err != nil {
 			log.Println("Error: cannot process file segment: ", err)
 			continue
@@ -84,18 +84,18 @@ func (r *Ranker) worker(fpath string, bufSize int, wg *sync.WaitGroup) {
 	wg.Done()
 }
 
-func validatePositiveIntParams(params map[string]int) error {
+func validateIntParams(params map[string]int) error {
 	for k, v := range params {
 		if v <= 0 {
-			return errors.New(fmt.Sprintf("error: `%s` should be a non-zero positive number", k))
+			return fmt.Errorf("error: `%s` should be a non-zero positive number", k)
 		}
 	}
 	return nil
 }
 
 // NewRanker creates new instance of the ranker
-func NewRanker(fpath string, nWorkers, topK, bufSize int) (*Ranker, error) {
-	err := validatePositiveIntParams(
+func NewRanker(nWorkers, topK, bufSize int) (*Ranker, error) {
+	err := validateIntParams(
 		map[string]int{
 			"nWorkers": nWorkers,
 			"topK":     topK,
@@ -106,8 +106,8 @@ func NewRanker(fpath string, nWorkers, topK, bufSize int) (*Ranker, error) {
 		return nil, err
 	}
 	r := &Ranker{
-		inputChan: make(chan *io.FileSegmentPointer, 1000),
-		heapsChan: make(chan *heap.InvertedBoundedHeap[*record.Record], nWorkers),
+		inputChan: make(chan *io.FileSegmentPointer),
+		heapsChan: make(chan *heap.InvertedBoundedHeap[*record.Record]),
 		config: rankerConfig{
 			topK:     topK,
 			nWorkers: nWorkers,
@@ -117,7 +117,7 @@ func NewRanker(fpath string, nWorkers, topK, bufSize int) (*Ranker, error) {
 		wg := &sync.WaitGroup{}
 		for i := 0; i < nWorkers; i++ {
 			wg.Add(1)
-			go r.worker(fpath, bufSize, wg)
+			go r.worker(bufSize, wg)
 		}
 		wg.Wait()
 		close(r.heapsChan)
@@ -125,17 +125,9 @@ func NewRanker(fpath string, nWorkers, topK, bufSize int) (*Ranker, error) {
 	return r, nil
 }
 
-// SubmitSegment pushes file segment pointer to the task queue
-func (r *Ranker) SubmitSegment(segment io.FileSegmentPointer) {
-	r.inputChan <- &segment
-}
-
 // GetRankedList merges heaps produced by mappers and
 // outputs slice of topk ranked urls
 func (r *Ranker) GetRankedList() []string {
-	// close inputs channels to stop recieving new
-	// records and gracefully stop mappers
-	close(r.inputChan)
 	topK := r.config.getTopK()
 	finalHeap := heap.NewHeap(comparator, topK, nil)
 	for h := range r.heapsChan {
@@ -148,13 +140,29 @@ func (r *Ranker) GetRankedList() []string {
 		topK = finalHeap.Len()
 	}
 	result := make([]string, topK)
-	// invert an order of elements, since we're mainting min heap
+	// invert an order of elements, since we're maintaining min heap
 	// but we need highest values first in result
 	for i := topK - 1; i >= 0; i-- {
 		v := finalHeap.Pop()
 		result[i] = v.Url
 	}
 	return result
+}
+
+// EmitFileSegments starts parsing the file and emits found segments
+// one by one to the input channel, then closes it to stop the workers
+func (r *Ranker) EmitFileSegments(fpath string, bufSize int, segmentSize int64) error {
+	segmentsChan, err := io.GetFileSegments(fpath, bufSize, segmentSize, '\n')
+	if err != nil {
+		return err
+	}
+	go func() {
+		for segment := range segmentsChan {
+			r.inputChan <- segment
+		}
+		close(r.inputChan)
+	}()
+	return nil
 }
 
 // ProcessFile reads file, splits it in segments and sends segments to ranker workers;
@@ -164,21 +172,14 @@ func ProcessFile(fpath string, bufSize, nWorkers, topK int, segmentSize int64) (
 	if int64(bufSize) > segmentSize && segmentSize != 0 {
 		return nil, errors.New("error: segment size should be larger than buffer size")
 	}
-	f, err := os.Open(fpath)
+	r, err := NewRanker(nWorkers, topK, bufSize)
 	if err != nil {
 		return nil, err
 	}
-	segments, err := io.GetFileSegments(f, bufSize, segmentSize, '\n')
-	f.Close()
+	err = r.EmitFileSegments(fpath, bufSize, segmentSize)
 	if err != nil {
 		return nil, err
 	}
-	r, err := NewRanker(fpath, nWorkers, topK, bufSize)
-	if err != nil {
-		return nil, err
-	}
-	for _, segment := range segments {
-		r.SubmitSegment(segment)
-	}
-	return r.GetRankedList(), nil
+	rank := r.GetRankedList()
+	return rank, nil
 }

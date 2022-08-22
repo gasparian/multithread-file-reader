@@ -40,21 +40,24 @@ func PrintResult(res []string) {
 
 // FileSegmentPointer represents starting byte index and length of data segment in bytes
 type FileSegmentPointer struct {
+	Fpath string
 	Start int64
 	Len   int64
 }
 
-// GetFileSegments reads file and returns segments pointers of ~`segmentSize` based on provided delimiter
-// TODO: submit segments pointers in channel and return it, to not keep segments in memory
-func GetFileSegments(f *os.File, bufSize int, segmentSize int64, delimiter byte) ([]FileSegmentPointer, error) {
+// GetFileSegments reads file and returns channel with segments pointers of ~`segmentSize` based on provided delimiter
+func GetFileSegments(fpath string, bufSize int, segmentSize int64, delimiter byte) (chan *FileSegmentPointer, error) {
+	f, err := os.Open(fpath)
+	if err != nil {
+		return nil, err
+	}
 	var (
 		pointer     int64 = 0
 		seek        int64 = 0
 		start       int64 = 0
 		chunkLength int64 = 0
-		err         error
 		n           int
-		segment     FileSegmentPointer
+		segment     *FileSegmentPointer
 	)
 	fi, err := f.Stat()
 	if err != nil {
@@ -65,31 +68,36 @@ func GetFileSegments(f *os.File, bufSize int, segmentSize int64, delimiter byte)
 		segmentSize = fsize
 	}
 	buf := make([]byte, bufSize)
-	segments := make([]FileSegmentPointer, 0)
-	for err == nil {
-		chunkLength += segmentSize
-		seek = pointer + chunkLength
-		if seek >= fsize {
-			segment.Start = pointer
-			segment.Len = fsize - pointer - 1
-			segments = append(segments, segment)
-		}
-		f.Seek(seek, 0)
-		n, err = f.Read(buf)
-		if n > 0 {
-			for _, b := range buf[:n] {
-				if b == delimiter && (seek+chunkLength) < (fsize-1) {
-					start = pointer
-					segment.Start = start
-					segment.Len = chunkLength
-					pointer += chunkLength + 1
-					chunkLength = 0
-					segments = append(segments, segment)
-					break
+	segmentsChan := make(chan *FileSegmentPointer)
+	go func() {
+		for err == nil {
+			segment = &FileSegmentPointer{Fpath: fpath}
+			chunkLength += segmentSize
+			seek = pointer + chunkLength
+			if seek >= fsize {
+				segment.Start = pointer
+				segment.Len = fsize - pointer - 1
+				segmentsChan <- segment
+			}
+			f.Seek(seek, 0)
+			n, err = f.Read(buf)
+			if n > 0 {
+				for _, b := range buf[:n] {
+					if b == delimiter && (seek+chunkLength) < (fsize-1) {
+						start = pointer
+						segment.Start = start
+						segment.Len = chunkLength
+						pointer += chunkLength + 1
+						chunkLength = 0
+						segmentsChan <- segment
+						break
+					}
+					chunkLength++
 				}
-				chunkLength++
 			}
 		}
-	}
-	return segments, nil
+		close(segmentsChan)
+		f.Close()
+	}()
+	return segmentsChan, nil
 }
