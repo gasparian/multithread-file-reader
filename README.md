@@ -21,7 +21,7 @@ http://api.tech.com/item/124345
 ```  
 
 #### Solution and results  
-Often, such "topk" problems are being solved with heaps. But given the fact that incoming file could be huge, we should not keep a lot of data in RAM. So the main idea was to follow these simple rules:
+Often, such "topk" problems are being solved with heaps. But given the fact that incoming file could be huge, we should not keep a lot of data in RAM. So the main idea was to follow these simple principles:  
  - read file in chunks in a separate goroutines;  
  - rely on channels to pass the data between processing steps, minimizing storing intermediate data in memory;  
  - generate bounded heap for each processed chunk of data and merge them in the end.  
@@ -77,9 +77,10 @@ Or you can provide parameters as command line arguments, e.g.:
 ./cmd/filereader/filereader --workers 4 --topk 3 --buf 1024 --segment 1048576
 ```  
 After running, you will be asked to enter a path to file that you want to process (e.g.: `./data/file1`).  
+*For unix-like operating systems*: remember, since each worker opens file for reading independently - amount of workers will be limited by how many file descriptors could be opened under the single process. In the code, `nWorkers` bounded to 1023 (Linux soft limit is 1024) just for safety reasons - most probably you don't want to spawn such amount of workers anyway.  
 
 ### Contributing  
-Try to follow the [standard golang project layout](https://github.com/golang-standards/project-layout).  
+It's better to follow the [standard golang project layout](https://github.com/golang-standards/project-layout).  
 Install pre-commit hook with standard go formatter in order to make commits:  
 ```
 make install-hooks

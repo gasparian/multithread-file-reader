@@ -40,9 +40,10 @@ func PrintResult(res []string) {
 
 // FileSegmentPointer represents starting byte index and length of data segment in bytes
 type FileSegmentPointer struct {
-	Fpath string
-	Start int64
-	Len   int64
+	Fpath   string
+	BufSize int
+	Start   int64
+	Len     int64
 }
 
 // GetFileSegments reads file and returns channel with segments pointers of ~`segmentSize` based on provided delimiter
@@ -71,7 +72,10 @@ func GetFileSegments(fpath string, bufSize int, segmentSize int64, delimiter byt
 	segmentsChan := make(chan *FileSegmentPointer)
 	go func() {
 		for err == nil {
-			segment = &FileSegmentPointer{Fpath: fpath}
+			segment = &FileSegmentPointer{
+				Fpath:   fpath,
+				BufSize: bufSize,
+			}
 			chunkLength += segmentSize
 			seek = pointer + chunkLength
 			if seek >= fsize {

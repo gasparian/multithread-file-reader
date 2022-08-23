@@ -26,7 +26,7 @@ run:
 
 .PHONY: test
 test:
-	go test -v -cover -race -count=1 -timeout 30s $$(go list ./... | grep -v '/cmd')
+	CGO_ENABLED=1 go test -v -cover -race -count=1 -timeout 30s $$(go list ./... | grep -v '/cmd')
 
 .PHONY: perftest
 perftest:

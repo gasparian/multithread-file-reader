@@ -40,15 +40,16 @@ type Ranker struct {
 	config    rankerConfig
 }
 
-func (r *Ranker) processSegment(fileSegment *io.FileSegmentPointer, bufSize int) (*heap.InvertedBoundedHeap[*record.Record], error) {
+func (r *Ranker) processSegment(fileSegment *io.FileSegmentPointer) (*heap.InvertedBoundedHeap[*record.Record], error) {
 	f, err := os.Open(fileSegment.Fpath)
 	if err != nil {
 		return nil, err
 	}
+	defer f.Close()
 	f.Seek(fileSegment.Start, 0)
 	s := bufio.NewScanner(f)
 	buf := make([]byte, 0)
-	s.Buffer(buf, bufSize)
+	s.Buffer(buf, fileSegment.BufSize)
 	var nBytesRead int64 = 0
 	h := heap.NewHeap(comparator, r.config.getTopK(), nil)
 	for s.Scan() {
@@ -72,9 +73,9 @@ func (r *Ranker) processSegment(fileSegment *io.FileSegmentPointer, bufSize int)
 	return h, nil
 }
 
-func (r *Ranker) worker(bufSize int, wg *sync.WaitGroup) {
+func (r *Ranker) worker(wg *sync.WaitGroup) {
 	for fileSegmentPointer := range r.inputChan {
-		h, err := r.processSegment(fileSegmentPointer, bufSize)
+		h, err := r.processSegment(fileSegmentPointer)
 		if err != nil {
 			log.Println("Error: cannot process file segment: ", err)
 			continue
@@ -84,24 +85,23 @@ func (r *Ranker) worker(bufSize int, wg *sync.WaitGroup) {
 	wg.Done()
 }
 
-func validateIntParams(params map[string]int) error {
-	for k, v := range params {
-		if v <= 0 {
-			return fmt.Errorf("error: `%s` should be a non-zero positive number", k)
-		}
+func validateRankerParams(nWorkers, topK int) error {
+	if topK < 1 {
+		return fmt.Errorf("error: `topK` should be >= 1")
+	}
+	if nWorkers <= 0 {
+		return fmt.Errorf("error: `nWorkers` should be a non-zero positive number")
+	}
+	if nWorkers > 1023 {
+		nWorkers = 1023
+		log.Printf("info: number of workers decreased from %v to 1023, since 1024 is a soft limit (for Linux)\n", nWorkers)
 	}
 	return nil
 }
 
 // NewRanker creates new instance of the ranker
-func NewRanker(nWorkers, topK, bufSize int) (*Ranker, error) {
-	err := validateIntParams(
-		map[string]int{
-			"nWorkers": nWorkers,
-			"topK":     topK,
-			"bufSize":  bufSize,
-		},
-	)
+func NewRanker(nWorkers, topK int) (*Ranker, error) {
+	err := validateRankerParams(nWorkers, topK)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +117,7 @@ func NewRanker(nWorkers, topK, bufSize int) (*Ranker, error) {
 		wg := &sync.WaitGroup{}
 		for i := 0; i < nWorkers; i++ {
 			wg.Add(1)
-			go r.worker(bufSize, wg)
+			go r.worker(wg)
 		}
 		wg.Wait()
 		close(r.heapsChan)
@@ -172,7 +172,7 @@ func ProcessFile(fpath string, bufSize, nWorkers, topK int, segmentSize int64) (
 	if int64(bufSize) > segmentSize && segmentSize != 0 {
 		return nil, errors.New("error: segment size should be larger than buffer size")
 	}
-	r, err := NewRanker(nWorkers, topK, bufSize)
+	r, err := NewRanker(nWorkers, topK)
 	if err != nil {
 		return nil, err
 	}
