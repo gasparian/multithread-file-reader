@@ -78,7 +78,7 @@ func GetFileSegments(fpath string, bufSize int, segmentSize int64, delimiter byt
 			}
 			chunkLength += segmentSize
 			seek = pointer + chunkLength
-			if seek >= fsize {
+			if seek >= (fsize - 1) {
 				segment.Start = pointer
 				segment.Len = fsize - pointer - 1
 				segmentsChan <- segment
