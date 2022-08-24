@@ -1,9 +1,9 @@
 # multithread-topK
-Small fun project to show how to extract topK elements from the huge files using multithreading, golang and consuming minimal possible resources.  
+Small fun project to show how to extract topK elements from the huge files using multithreading and golang, consuming minimal possible resources.  
 
 ### Description  
 #### Task
-Imagine a task where you need to extract urls stats data from the file (10-100 Gb in size) and return the ranked list of urls with the highest values.  
+Imagine a task where you need to extract urls stats data from the file (lets say 10-100 Gb in size) and return the ranked list of urls with the highest values.  
 Files are provided in the following format:  
 ```
 <url><double_white_space><long value>
@@ -25,6 +25,7 @@ Often, such "topk" problems are being solved with heaps. But given the fact that
  - read file in chunks in a separate goroutines;  
  - rely on channels to pass the data between processing steps, minimizing storing intermediate data in memory;  
  - generate bounded heap for each processed chunk of data and merge them in the end.  
+
 The trick with bounded heap, is that in order to get top max k values, we can keep min k heap and always drop smallest values when the heap size limit is exceeded. Check out `./pkg/heap` for more details.  
 Here is a high-level algorithm description:  
  - First, we read the file and split it into [segments](https://github.com/gasparian/multithread-topK/blob/main/internal/io/io.go#L48), based on segment size and delimiter, then each segment pointers from `segmentsChan` are [passed](https://github.com/gasparian/multithread-topK/blob/main/internal/ranker/ranker.go#L181) to the `inputChan` in [`Ranker`](https://github.com/gasparian/multithread-topK/blob/main/internal/ranker/ranker.go#L37);  
