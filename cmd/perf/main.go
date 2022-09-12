@@ -80,7 +80,7 @@ func main() {
 	defer os.RemoveAll(fname)
 	for i := 0; i <= 4; i += 2 {
 		segmentSize := int64(math.Pow(2, float64(i))) * defaultSegmentSize
-		log.Printf("--- Segment size: %v\n", segmentSize)
+		log.Printf("--- Segment size: %v b\n", segmentSize)
 		for j := 0; j <= 3; j++ {
 			nWorkers := math.Pow(2, float64(j))
 			avrgDuration = 0

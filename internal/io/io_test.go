@@ -43,7 +43,7 @@ http://api.tech.com/item/124345  231
 	if err != nil {
 		t.Fatal(err)
 	}
-	segments := make([]*FileSegmentPointer, 0)
+	segments := make([]FileSegmentPointer, 0)
 	for segment := range segmentsChan {
 		segments = append(segments, segment)
 	}

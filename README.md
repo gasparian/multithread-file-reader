@@ -39,18 +39,21 @@ I've used `go 1.18` and **no third-party libraries**.
  
 Here is ranker test report example, where I've tried to get basic understanding of how much is the time difference using single workers vs multiple workers to parse and process the file:  
 ```
-2022/08/22 12:46:13 MAXPROCS set to 4
-2022/08/22 12:46:23 Generated file size in bytes: 161897502
-2022/08/22 12:46:23 --- Segment size: 1048576
-2022/08/22 12:46:23 >>> 1 workers 
-2022/08/22 12:46:31 Average elapsed time: 832 ms
-2022/08/22 12:46:31 ---------------------
-2022/08/22 12:46:31 >>> 2 workers 
-2022/08/22 12:46:35 Average elapsed time: 454 ms
-2022/08/22 12:46:35 ---------------------
-2022/08/22 12:46:35 >>> 4 workers 
-2022/08/22 12:46:38 Average elapsed time: 266 ms
-2022/08/22 12:46:38 ---------------------
+2022/09/12 17:07:35 MAXPROCS set to 4
+2022/09/12 17:07:45 Generated file size in bytes: 166897502
+2022/09/12 17:07:45 --- Segment size: 1048576 b
+2022/09/12 17:07:45 >>> 1 workers 
+2022/09/12 17:07:53 Average elapsed time: 855 ms
+2022/09/12 17:07:53 ---------------------
+2022/09/12 17:07:53 >>> 2 workers 
+2022/09/12 17:07:58 Average elapsed time: 471 ms
+2022/09/12 17:07:58 ---------------------
+2022/09/12 17:07:58 >>> 4 workers 
+2022/09/12 17:08:01 Average elapsed time: 281 ms
+2022/09/12 17:08:01 ---------------------
+2022/09/12 17:08:01 >>> 8 workers 
+2022/09/12 17:08:04 Average elapsed time: 279 ms
+2022/09/12 17:08:04 ---------------------
 ...
 ```  
 You can reproduce it on your machine by running: `make perftest`. Inside this test, 2.5 mln lines with random ids and values are generated and passed to `Ranker`.  
@@ -59,13 +62,12 @@ You can find more details in `./cmd/perf/main.go`, and see how segment size affe
 
 ### Build and test  
 
-Specify your os and arch to Build static binary (except for mac):  
+Specify your os and arch to build static binary (except for mac):  
 
 ```
-make build GOOS=linux GOARCH=amd64
+GOOS=linux GOARCH=amd64 make build
 ```  
-Executable binary will be located at `./cmd/filereader/`.  
-By default `linux/amd64` is using.  
+Executable binary will be located at the repo's root.  
 
 In order to test, just run:  
 ```
@@ -73,14 +75,13 @@ make test
 ```  
 
 ###  Usage  
-Compiled binary will be placed in `./cmd/filereader/`.  
-You can use `make run` to just run an app with default parameters (check them in `./cmd/filereader/main.go`).  
-Or you can provide parameters as command line arguments, e.g.:  
+You can run executable providing parameters as command line arguments, e.g.:  
 ```
-./cmd/filereader/filereader --workers 4 --topk 3 --buf 1024 --segment 1048576
+./filereader --workers 4 --topk 3 --buf 1024 --segment 1048576
 ```  
+Check the default parameters at `./cmd/filereader/main.go`.  
 After running, you will be asked to enter a path to file that you want to process (e.g.: `./data/file1`).  
-*For unix-like operating systems*: remember, since each worker opens file for reading independently - amount of workers will be limited by how many file descriptors could be opened under the single process. In the code, `nWorkers` bounded to 1023 (Linux soft limit is 1024) just for safety reasons - most probably you don't want to spawn such amount of workers anyway.  
+*For unix-like operating systems*: since each worker opens file for reading independently - amount of workers will be limited by how many file descriptors could be opened under the single process. In the code, `nWorkers` bounded to 1023 (Linux soft limit is 1024) just for safety reasons - most probably you don't want to spawn such amount of workers anyway.  
 
 ### Contributing  
 It's better to follow the [standard golang project layout](https://github.com/golang-standards/project-layout).  

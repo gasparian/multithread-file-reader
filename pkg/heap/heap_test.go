@@ -49,7 +49,7 @@ func TestMinInvertedHeapFromSlice(t *testing.T) {
 	for i := range trueOrder {
 		v = h.Pop()
 		if v != trueOrder[i] {
-		    t.Fatal()
+			t.Fatal()
 		}
 	}
 }
@@ -71,7 +71,7 @@ func TestMergeMinInvertedHeaps(t *testing.T) {
 	for i := range trueOrder {
 		v := h1.Pop()
 		if v != trueOrder[i] {
-		    t.Fatal()
+			t.Fatal()
 		}
 	}
 }
@@ -94,7 +94,7 @@ func TestMergeMinInvertedHeapsBounded(t *testing.T) {
 	for i := range trueOrder {
 		v := h1.Pop()
 		if v != trueOrder[i] {
-		    t.Fatalf("Expected: %v, but got: %v\n", trueOrder[i], v)
+			t.Fatalf("Expected: %v, but got: %v\n", trueOrder[i], v)
 		}
 	}
 }
@@ -110,10 +110,10 @@ func TestMergeMaxInvertedHeapsBoundedSmall(t *testing.T) {
 	h1.Merge(h2)
 	h1.Merge(h3)
 	// 2 highest values has been dropped during the merge
-	for i:=maxSize-1; i >=0; i-- {
+	for i := maxSize - 1; i >= 0; i-- {
 		v := h1.Pop()
 		if v != trueOrder[i] {
-		    t.Fatalf("Expected: %v, but got: %v\n", trueOrder[i], v)
+			t.Fatalf("Expected: %v, but got: %v\n", trueOrder[i], v)
 		}
 	}
 }
@@ -130,10 +130,10 @@ func TestMergeMaxInvertedHeapsBoundedSmallPush(t *testing.T) {
 	h2 := NewHeap(comp, maxSize, nil)
 	h1.Merge(h2)
 	// 2 highest values has been dropped during the merge
-	for i:=maxSize-1; i >=0; i-- {
+	for i := maxSize - 1; i >= 0; i-- {
 		v := h1.Pop()
 		if v != trueOrder[i] {
-		    t.Fatalf("Expected: %v, but got: %v\n", trueOrder[i], v)
+			t.Fatalf("Expected: %v, but got: %v\n", trueOrder[i], v)
 		}
 	}
 }
