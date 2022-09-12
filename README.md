@@ -1,3 +1,5 @@
+![main tests](https://github.com/gasparian/multithread-topK/actions/workflows/test.yml/badge.svg?branch=main)  
+
 # multithread-topK
 Small fun project to show how to extract topK elements from the huge files using multithreading and golang, consuming minimal possible resources.  
 
