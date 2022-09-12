@@ -2,13 +2,6 @@
 
 .DEFAULT_GOAL := build
 
-ifndef GOOS
-	export GOOS=darwin
-endif
-ifndef GOARCH
-	export GOARCH=amd64
-endif
-
 .PHONY: install-hooks
 install-hooks:
 	cp -rf .githooks/pre-commit .git/hooks/pre-commit
@@ -26,7 +19,7 @@ run:
 
 .PHONY: test
 test:
-	CGO_ENABLED=1 go test -v -cover -race -count=1 -timeout 30s $$(go list ./... | grep -v '/cmd')
+	go test -v -cover -race -count=1 -timeout 30s $$(go list ./... | grep -v '/cmd')
 
 .PHONY: perftest
 perftest:
