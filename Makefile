@@ -10,12 +10,8 @@ install-hooks:
 build:
 	go build \
 	    -ldflags '-w -extldflags "-static"' \
-		-v -o ./cmd/filereader/filereader \
+		-v -o ./filereader \
 		./cmd/filereader
-
-.PHONY: run
-run:
-	./cmd/filereader/filereader
 
 .PHONY: test
 test:

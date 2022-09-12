@@ -13,10 +13,10 @@ import (
 	"github.com/gasparian/clickhouse-test-file-reader/pkg/heap"
 )
 
-// instead of max we do min here, to maintian heap of constant size
+// instead of max we do min here, to maintain heap of constant size
 // we then have to reverse order of elements that we get from the heap
 // to get topk values
-func comparator(a, b *record.Record) bool {
+func comparator(a, b record.Record) bool {
 	return a.Value < b.Value
 }
 
@@ -35,12 +35,12 @@ func (rc *rankerConfig) getTopK() int {
 // Ranker holds channels for communicating between processing stages
 // and methods for parsing and ranking input text data
 type Ranker struct {
-	inputChan chan *io.FileSegmentPointer
-	heapsChan chan *heap.InvertedBoundedHeap[*record.Record]
+	inputChan chan io.FileSegmentPointer
+	heapsChan chan *heap.InvertedBoundedHeap[record.Record]
 	config    rankerConfig
 }
 
-func (r *Ranker) processSegment(fileSegment *io.FileSegmentPointer) (*heap.InvertedBoundedHeap[*record.Record], error) {
+func (r *Ranker) processSegment(fileSegment io.FileSegmentPointer) (*heap.InvertedBoundedHeap[record.Record], error) {
 	f, err := os.Open(fileSegment.Fpath)
 	if err != nil {
 		return nil, err
@@ -106,8 +106,8 @@ func NewRanker(nWorkers, topK int) (*Ranker, error) {
 		return nil, err
 	}
 	r := &Ranker{
-		inputChan: make(chan *io.FileSegmentPointer),
-		heapsChan: make(chan *heap.InvertedBoundedHeap[*record.Record]),
+		inputChan: make(chan io.FileSegmentPointer),
+		heapsChan: make(chan *heap.InvertedBoundedHeap[record.Record]),
 		config: rankerConfig{
 			topK:     topK,
 			nWorkers: nWorkers,

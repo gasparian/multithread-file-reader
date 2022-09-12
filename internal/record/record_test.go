@@ -3,8 +3,8 @@ package record
 import "testing"
 
 func TestRecordParser(t *testing.T) {
-	gt := &Record{
-        Url: "http://api.tech.com/item/121345",
+	gt := Record{
+		Url:   "http://api.tech.com/item/121345",
 		Value: 9,
 	}
 	rec, err := ParseRecord("http://api.tech.com/item/121345  9")

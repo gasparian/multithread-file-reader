@@ -3,11 +3,11 @@ package heap
 // Ref.: https://gist.github.com/nwillc/554847806891a41e7bd32041308dfb40#file-go_generics_heap-go
 
 // InvertedBoundedHeap holds generic heap implementation
-// Main idea: use min heap as max heap, since it's very convinient to 
+// Main idea: use min heap as max heap, since it's very convinient to
 // drop smallest values when the maxSize exceeded
 type InvertedBoundedHeap[T any] struct {
-	data []T
-	comp func(a, b T) bool
+	data    []T
+	comp    func(a, b T) bool
 	maxSize int
 }
 
@@ -16,7 +16,7 @@ func NewHeap[T any](comp func(a, b T) bool, maxSize int, data []T) *InvertedBoun
 	h := &InvertedBoundedHeap[T]{comp: comp, maxSize: maxSize}
 	if data != nil {
 		h.data = data
-	    h.build()
+		h.build()
 	}
 	return h
 }
@@ -24,7 +24,7 @@ func NewHeap[T any](comp func(a, b T) bool, maxSize int, data []T) *InvertedBoun
 // Len returns size of InvertedBoundedHeap
 func (h *InvertedBoundedHeap[T]) Len() int { return len(h.data) }
 
-// Push adds new element to InvertedBoundedHeap 
+// Push adds new element to InvertedBoundedHeap
 // it will return value from the top of the heap if size limit exceeded (be careful!)
 func (h *InvertedBoundedHeap[T]) Push(v T) T {
 	h.data = append(h.data, v)
@@ -110,7 +110,7 @@ func (h *InvertedBoundedHeap[T]) heapify(i int) {
 func (h *InvertedBoundedHeap[T]) build() []T {
 	remaining := make([]T, 0)
 	startIdx := h.Len()/2 - 1
-	for i:=startIdx; i >= 0; i-- {
+	for i := startIdx; i >= 0; i-- {
 		h.heapify(i)
 	}
 	for h.Len() > h.maxSize {

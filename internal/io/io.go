@@ -47,7 +47,7 @@ type FileSegmentPointer struct {
 }
 
 // GetFileSegments reads file and returns channel with segments pointers of ~`segmentSize` based on provided delimiter
-func GetFileSegments(fpath string, bufSize int, segmentSize int64, delimiter byte) (chan *FileSegmentPointer, error) {
+func GetFileSegments(fpath string, bufSize int, segmentSize int64, delimiter byte) (chan FileSegmentPointer, error) {
 	f, err := os.Open(fpath)
 	if err != nil {
 		return nil, err
@@ -58,7 +58,7 @@ func GetFileSegments(fpath string, bufSize int, segmentSize int64, delimiter byt
 		start       int64 = 0
 		chunkLength int64 = 0
 		n           int
-		segment     *FileSegmentPointer
+		segment     FileSegmentPointer
 	)
 	fi, err := f.Stat()
 	if err != nil {
@@ -69,10 +69,10 @@ func GetFileSegments(fpath string, bufSize int, segmentSize int64, delimiter byt
 		segmentSize = fsize
 	}
 	buf := make([]byte, bufSize)
-	segmentsChan := make(chan *FileSegmentPointer)
+	segmentsChan := make(chan FileSegmentPointer)
 	go func() {
 		for err == nil {
-			segment = &FileSegmentPointer{
+			segment = FileSegmentPointer{
 				Fpath:   fpath,
 				BufSize: bufSize,
 			}
